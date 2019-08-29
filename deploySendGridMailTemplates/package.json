@@ -1,0 +1,22 @@
+{
+  "name": "deploysendgridtemplates",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Illia Chuikov",
+  "license": "MIT",
+  "dependencies": {
+    "azure-pipelines-task-lib": "^2.8.0",
+    "fs": "0.0.1-security",
+    "path": "^0.12.7",
+    "request": "^2.88.0",
+    "tsc": "^1.20150623.0"
+  },
+  "devDependencies": {
+    "@types/node": "^12.6.9",
+    "@types/q": "^1.5.2"
+  }
+}

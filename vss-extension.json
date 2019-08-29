@@ -1,0 +1,65 @@
+{
+    "manifestVersion": 1,
+    "id": "ichuikov-DeploySendGridMailTemplates",
+    "name": "Deploy SendGrid Mail Templates",
+    "version": "0.10.0",
+    "publisher": "ichuikov",
+    "targets": [
+        {
+            "id": "Microsoft.VisualStudio.Services.Cloud"
+        }
+    ],
+    "scopes": [
+        "vso.variablegroups_manage"
+    ],   
+    "description": "Deploys mail templates to SendGrid using its API.",
+    "categories": [
+        "Azure Pipelines"
+    ],
+    "tags": [
+        "SendGrid",
+        "Mail",
+        "Configuration"
+      ],
+    "content": {
+        "details": {
+          "path": "readme.md"
+        },
+        "license": {
+          "path": "license"
+        }
+    },
+    "links": {
+        "getstarted": {
+          "uri": "https://github.com/IlyaBkmz/deploySendGridMailTemplates.AzureDevOps.Task"
+        },
+        "support": {
+          "uri": "https://github.com/IlyaBkmz/deploySendGridMailTemplates.AzureDevOps.Task"
+        }
+    },
+    "icons": {
+        "default": "deploySendGridMailTemplates/icon.png"        
+    },
+    "files": [
+        {
+            "path": "deploySendGridMailTemplates"
+        }
+    ],
+    "branding": {
+        "color": "rgb(36, 43, 50)",
+        "theme": "dark"
+      },
+    "contributions": [
+        {
+            "id": "ichuikov-DeploySendGridMailTemplates",
+            "type": "ms.vss-distributed-task.task",
+            "description": "Deploys mail templates to SendGrid using its API.",
+            "targets": [
+                "ms.vss-distributed-task.tasks"
+            ],
+            "properties": {
+                "name": "deploySendGridMailTemplates"
+            }
+        }
+    ]
+}

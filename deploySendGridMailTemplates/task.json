@@ -1,0 +1,81 @@
+{
+    "id": "6a3e817c-757d-49aa-a20b-c8728975946e",
+    "name": "ichuikov-DeploySendGridMailTemplates",
+    "friendlyName": "Deploy SendGrid Mail Templates",
+    "description": "Deploys mail templates to SendGrid using its API.",
+    "helpMarkDown": "",
+    "category": "Utility",
+    "author": "Illia Chuikov",
+    "version": {
+        "Major": 0,
+        "Minor": 10,
+        "Patch": 0
+    },
+    "instanceNameFormat": "Deploy templates to SendGrid",
+    "groups": [ 
+        {
+            "name": "sendGridCreds",
+            "displayName": "SendGrid credentials",
+            "isExpanded": true
+        }
+    ],
+    "inputs": [
+        {
+            "name": "sendGridUserName",
+            "type": "string",
+            "label": "Send Grid User Name",
+            "defaultValue": "",
+            "required": true,
+            "groupName":"sendGridCreds",
+            "helpMarkDown": "The user name of your SendGrid account."
+        },
+        {
+            "name": "sendGridPassword",
+            "type": "string",
+            "label": "Send Grid Password",
+            "defaultValue": "",
+            "required": true,
+            "groupName":"sendGridCreds",
+            "helpMarkDown": "The password of your SendGrid account."
+        },
+        {
+            "name": "templatesDirectoryPath",
+            "type": "filePath",
+            "label": "Path to folder with templates",
+            "defaultValue": "",
+            "required": true,
+            "helpMarkDown": "The path to directory with templates."
+        },
+        {
+            "name": "groupId",
+            "type": "pickList",
+            "label": "The Id of variable group",
+            "defaultValue": "",
+            "required": true,
+            "properties": {
+                "EditableOptions": "True"
+            },
+            "helpMarkDown": "The id of variable group, where template ids will be stored (can be found in url). WARNING: all variables will be overwritten."
+        }
+    ],
+    "sourceDefinitions": [
+        {
+
+        }
+    ],
+    "dataSourceBindings": [
+        {
+            "target": "groupId",
+            "endpointId": "tfs:feed",
+            "endpointUrl": "$(System.TeamFoundationCollectionUri)/$(System.TeamProject)/_apis/distributedtask/variablegroups?api-version=5.1-preview.1",
+            "resultSelector": "jsonpath:$.value[*]",
+            "resultTemplate": "{\"Value\":\"{{{ id }}}\",\"DisplayValue\":\"{{{ name }}}\"}",
+            "authKey": "$(System.AccessToken)"
+        }
+    ],
+    "execution": {
+        "Node": {
+            "target": "index.js"
+        }
+    }
+}
