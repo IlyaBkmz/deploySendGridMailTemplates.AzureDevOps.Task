@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "ichuikov-DeploySendGridMailTemplates",
     "name": "Deploy SendGrid Mail Templates",
-    "version": "0.10.0",
+    "version": "0.1.0",
     "publisher": "ichuikov",
     "targets": [
         {

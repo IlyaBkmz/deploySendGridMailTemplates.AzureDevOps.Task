@@ -12,64 +12,51 @@ const tl = require("azure-pipelines-task-lib/task");
 const fs = require("fs");
 const request = require('request');
 const path = require('path');
-const directoryDoesNotExistErrorMessage = "The specified directory with tepmlates doesn't exist.";
-const specifiedPathIsNotFolderErrorMessage = "The specified path is not a folder.";
-const noHtmlFilesErrorMessage = "There are not any html files in specified folder.";
-const apiKeyDeleteErrorMessage = "The delete of SendGrid API key was unsuccessful.";
-const apiKeyCreateErrorMessage = "The creation of SendGrid API key was unsuccessful.";
-const variableGroupUpdateErrorMessage = "Update of Variable Group was unsuccessful.";
-const variableGroupWasNotFoundErrorMessage = "Variable Group was not found.";
-const templateCreateErrorMessage = "The creation of template was unsuccessful.";
-const templateVersionCreateErrorMessage = "The creation of template version was unsuccessful.";
-const variableGroupDescription = "Contains ids of SendGrid mail templates.";
-const sendGridapiKeysUrl = 'https://api.sendgrid.com/v3/api_keys';
+const sendGridApiKeysUrl = 'https://api.sendgrid.com/v3/api_keys';
 const sendGridTemplatesUrl = 'https://api.sendgrid.com/v3/templates';
 const okResultCode = '200';
-const createdCode = '201';
-const noContentResultCode = '204';
 const sendGridTemplateGeneration = "dynamic";
 const sendGridTemplateEditor = "code";
-const sendGridApiKeyName = "API key to load templates";
 const htmlExtension = ".html";
 (() => __awaiter(this, void 0, void 0, function* () {
     try {
+        tl.setResourcePath(path.join(__dirname, 'task.json'));
         const sendGridUserName = tl.getInput('sendGridUserName', true);
         const sendGridPassword = tl.getInput('sendGridPassword', true);
         const templatesDirectoryPath = tl.getPathInput('templatesDirectoryPath', true);
         const groupId = tl.getInput('groupId', true);
-        const organisationName = tl.getInput('organisationName', true); //tl.getVariable('System.TeamFoundationCollectionUri');
-        const projectName = tl.getInput('projectName', true); //tl.getVariable('System.TeamProject');
-        const azureDevOpsToken = tl.getInput('azureDevOpsToken', true); //tl.getVariable('System.AccessToken');
+        const organisationName = tl.getVariable('System.TeamFoundationCollectionUri');
+        const projectName = tl.getVariable('System.TeamProject');
+        const azureDevOpsToken = tl.getVariable('System.AccessToken');
         const azureDevOpsTokenAuth = {
             'user': 'user',
             'pass': azureDevOpsToken
         };
-        if (!tl.exist(templatesDirectoryPath)) {
-            tl.setResult(tl.TaskResult.Failed, directoryDoesNotExistErrorMessage);
-            return;
-        }
-        if (!tl.stats(templatesDirectoryPath).isDirectory()) {
-            tl.setResult(tl.TaskResult.Failed, specifiedPathIsNotFolderErrorMessage);
-            return;
-        }
+        verifyTemplatesDirectory(templatesDirectoryPath);
         let htmlFiles = fs.readdirSync(templatesDirectoryPath).filter((file) => {
             return path.extname(file).toLowerCase() === htmlExtension;
         });
         if (htmlFiles.length == 0) {
-            tl.setResult(tl.TaskResult.Failed, noHtmlFilesErrorMessage);
+            tl.setResult(tl.TaskResult.Failed, tl.loc("noHtmlFilesErrorMessage"));
             return;
         }
         const azureDevOpsApiUrl = `${organisationName}/${projectName}/_apis/distributedtask/variablegroups/${groupId}?api-version=5.1-preview.1`;
-        let variableGroupContentPromise = new Promise((resolve) => {
+        let variableGroupContentPromise = new Promise((resolve, reject) => {
             request.get(azureDevOpsApiUrl, {
                 'auth': azureDevOpsTokenAuth
             }, (error, response, body) => __awaiter(this, void 0, void 0, function* () {
-                if (response.statusCode != okResultCode) {
-                    tl.setResult(tl.TaskResult.Failed, `${variableGroupWasNotFoundErrorMessage} Status code: ${response.statusCode}, error details: ${error}.`);
-                    return;
+                if (response.statusCode == okResultCode) {
+                    if (body != 'null') {
+                        let jsonBody = JSON.parse(body);
+                        resolve({ 'name': jsonBody.name, 'variables': jsonBody.variables });
+                    }
+                    else {
+                        reject(new Error(`${tl.loc("variableGroupWasNotFoundErrorMessage")}`));
+                    }
                 }
-                let jsonBody = JSON.parse(body);
-                resolve({ 'name': jsonBody.name, 'variables': jsonBody.variables });
+                else {
+                    reject(new Error(`${tl.loc("insufficientPermissionsErrorMessage")}`));
+                }
             }));
         });
         let variableGroupContent = yield variableGroupContentPromise;
@@ -78,18 +65,18 @@ const htmlExtension = ".html";
             'pass': sendGridPassword
         };
         let getSendGridApiKeyPromise = new Promise((resolve) => {
-            request.post(sendGridapiKeysUrl, {
+            request.post(sendGridApiKeysUrl, {
                 'auth': sendGridUserNameAuth,
                 'json': {
-                    'name': sendGridApiKeyName,
+                    'name': "API key to load templates",
                     'scopes': [
                         "templates.create",
                         "templates.versions.create",
                     ]
                 }
             }, (error, response, body) => __awaiter(this, void 0, void 0, function* () {
-                if (error) {
-                    tl.setResult(tl.TaskResult.Failed, `${apiKeyCreateErrorMessage} Status code: ${response.statusCode}, error details: ${error}.`);
+                if (body.errors) {
+                    tl.setResult(tl.TaskResult.Failed, `${tl.loc("apiKeyCreateErrorMessage")} Status code: ${response.statusCode}, error: ${body.errors[0].message}.`);
                     return;
                 }
                 resolve([body.api_key, body.api_key_id]);
@@ -111,9 +98,9 @@ const htmlExtension = ".html";
                         "generation": sendGridTemplateGeneration
                     }
                 }, (error, response, body) => __awaiter(this, void 0, void 0, function* () {
-                    if (response.statusCode != createdCode) {
-                        yield deleteSendGridApiKey(request, sendGridUserNameAuth, sendGridApiKeyId);
-                        tl.setResult(tl.TaskResult.Failed, `${templateCreateErrorMessage} Status code: ${response.statusCode}, error details: ${error}.`);
+                    if (body.errors) {
+                        deleteSendGridApiKey(sendGridUserNameAuth, sendGridApiKeyId);
+                        tl.setResult(tl.TaskResult.Failed, `${tl.loc("templateCreateErrorMessage")} Status code: ${response.statusCode}, error: ${body.errors[0].message}.`);
                         return;
                     }
                     resolve(body.id);
@@ -130,43 +117,51 @@ const htmlExtension = ".html";
                     "subject": "{{{ subject }}}",
                     "editor": sendGridTemplateEditor
                 }
-            }, (error, response) => __awaiter(this, void 0, void 0, function* () {
-                if (response.statusCode != createdCode) {
-                    yield deleteSendGridApiKey(request, sendGridUserNameAuth, sendGridApiKeyId);
-                    tl.setResult(tl.TaskResult.Failed, `${templateVersionCreateErrorMessage} Status code: ${response.statusCode}, error details: ${error}.`);
+            }, (error, response, body) => __awaiter(this, void 0, void 0, function* () {
+                if (body.errors) {
+                    deleteSendGridApiKey(sendGridUserNameAuth, sendGridApiKeyId);
+                    tl.setResult(tl.TaskResult.Failed, `${tl.loc("templateVersionCreateErrorMessage")} Status code: ${response.statusCode}, error: ${body.errors[0].message}.`);
                     return;
                 }
             }));
         }
-        yield deleteSendGridApiKey(request, sendGridUserNameAuth, sendGridApiKeyId);
+        deleteSendGridApiKey(sendGridUserNameAuth, sendGridApiKeyId);
         request.put(azureDevOpsApiUrl, {
             'json': {
                 "variables": templateIds,
                 "type": "Vsts",
                 "name": variableGroupContent.name,
-                "description": variableGroupDescription
+                "description": tl.loc("variableGroupDescription")
             },
             'auth': azureDevOpsTokenAuth,
-        }, (error, response) => __awaiter(this, void 0, void 0, function* () {
-            if (response.statusCode != okResultCode) {
-                tl.setResult(tl.TaskResult.Failed, `${variableGroupUpdateErrorMessage} Status code: ${response.statusCode}, error details: ${error}.`);
+        }, (error, response, body) => {
+            if (body == 'null' || response.statusCode != okResultCode) {
+                tl.setResult(tl.TaskResult.Failed, `${tl.loc("variableGroupUpdateErrorMessage")}`);
                 return;
             }
-        }));
+        });
     }
     catch (error) {
         tl.setResult(tl.TaskResult.Failed, error.message);
     }
 }))();
-function deleteSendGridApiKey(request, sendGridUserNameAuth, sendGridApiKeyId) {
-    return __awaiter(this, void 0, void 0, function* () {
-        request.delete(`${sendGridapiKeysUrl}/${sendGridApiKeyId}`, {
-            'auth': sendGridUserNameAuth,
-        }, (error, response) => __awaiter(this, void 0, void 0, function* () {
-            if (response.statusCode != noContentResultCode) {
-                tl.setResult(tl.TaskResult.Failed, `${apiKeyDeleteErrorMessage} Status code: ${response.statusCode}, error details: ${error}.`);
-                return;
-            }
-        }));
+function deleteSendGridApiKey(sendGridUserNameAuth, sendGridApiKeyId) {
+    request.delete(`${sendGridApiKeysUrl}/${sendGridApiKeyId}`, {
+        'auth': sendGridUserNameAuth,
+    }, (error, response, body) => {
+        if (body.errors) {
+            tl.setResult(tl.TaskResult.Failed, `${tl.loc("apiKeyDeleteErrorMessage")} Status code: ${response.statusCode}, error: ${body.errors[0].message}.`);
+            return;
+        }
     });
+}
+function verifyTemplatesDirectory(templatesDirectoryPath) {
+    if (!tl.exist(templatesDirectoryPath)) {
+        tl.setResult(tl.TaskResult.Failed, tl.loc("directoryDoesNotExistErrorMessage"));
+        return;
+    }
+    if (!tl.stats(templatesDirectoryPath).isDirectory()) {
+        tl.setResult(tl.TaskResult.Failed, tl.loc("specifiedPathIsNotAFolderErrorMessage"));
+        return;
+    }
 }

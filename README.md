@@ -11,7 +11,7 @@ This extension requires an existing SendGrid account, Variable Group in Azure De
 allow scripts to access the OAuth token in the release settings. All mail templates should be located in the folder in the form of html files. The file names will be used as a name of variable to store template id in Variable groupe.
 
 ## Warnings
-Using this extension you should remmeber that SendGrid has limitation to store only 300 transactional templates per account and this extension each time creates new templates.
+Using this extension you should remmeber that SendGrid has limitation to store only 300 transactional templates per account and this extension each time creates new templates without any deletions or updates.
 
 ## Authors
 
